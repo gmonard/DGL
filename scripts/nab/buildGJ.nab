@@ -1,0 +1,403 @@
+
+// add a residue on the peptidic N atom
+molecule myaddresidueN(molecule mymol, string mystrand, int myresid,
+                      string newresname, string libname)
+{
+  molecule newmol;
+  residue  newres;
+  string cpos, opos, capos, npos, hpos;
+  atom atm;
+  int err;
+
+  // align to origin
+  // Yaxis: N=H bond is align on Y
+  // Xaxis: N-CA projection (setframe(2, ...))
+  //            H
+  //   Y        | 
+  //   ^        N
+  //   |         \
+  //   O-->X      CA
+  npos  = sprintf( ":%d:N" ,myresid);
+  hpos  = sprintf( ":%d:H" ,myresid);
+  capos = sprintf( ":%d:CA",myresid);
+  err = setframe( 2, mymol, npos, npos, capos, npos, hpos );
+  if (err != 0)
+  {
+    // it could be NME
+    capos = sprintf( ":%d:CH3",myresid);
+    err = setframe( 2, mymol, npos, npos, capos, npos, hpos );
+  }
+  err = alignframe(mymol,NULL);
+
+  // new molecule to contain the next residue
+  newmol = newmolecule();
+  addstrand(newmol,"new");
+  newres = getresidue(newresname, libname);
+  addresidue(newmol, "new", newres);
+
+  // align this residue
+  // Yaxis: C=O bond is align on Y
+  // Xaxis: C-CA projection (setframe(2, ...))
+  //         CA
+  //   Y       \
+  //   ^        C
+  //   |        |
+  //   O-->X    O
+  cpos  = sprintf( ":1:C" );
+  opos  = sprintf( ":1:O" );
+  capos = sprintf( ":1:CA");
+  err = setframe( 2, newmol, cpos, capos, cpos, opos, cpos );
+  if (err != 0)
+  {
+    // it could be ACE
+    capos = sprintf( ":1:CH3");
+    err = setframe( 2, newmol, cpos, capos, cpos, opos, cpos );
+  }
+  err = alignframe(newmol,NULL);
+
+  // move the new residue in order to "form" the right bond length
+  // (no bond is made yet)
+  for( atm in newmol )
+  {
+    atm.x = atm.x - 1.2039;
+    atm.y = atm.y - 0.5768;
+  }
+
+  // merge the two molecules
+  mergestr( mymol, mystrand, "last", 
+	    newmol, "new", "first" );
+  // connect the two residue
+  connectres(mymol, mystrand, 2, "C", 1, "N");
+
+  return mymol;
+};
+
+// add a residue on the sidechain N atom
+molecule myaddresidueNZ(molecule mymol, string mystrand, int myresid,
+                      string newresname, string libname)
+{
+  molecule newmol;
+  residue  newres;
+  string cpos, opos, capos, npos, hpos;
+  atom atm;
+  int nres;
+  int err;
+
+  // align to origin
+  // Yaxis: N=H bond is align on Y
+  // Xaxis: N-CA projection (setframe(2, ...))
+  //            HZ
+  //   Y        | 
+  //   ^        NZ
+  //   |         \
+  //   O-->X      CE
+  npos  = sprintf( ":%d:NZ" ,myresid);
+  hpos  = sprintf( ":%d:HZ" ,myresid);
+  capos = sprintf( ":%d:CE",myresid);
+  err = setframe( 2, mymol, npos, npos, capos, npos, hpos );
+  err = alignframe(mymol,NULL);
+
+  // new molecule to contain the next residue
+  newmol = newmolecule();
+  addstrand(newmol,"new");
+  newres = getresidue(newresname, libname);
+  addresidue(newmol, "new", newres);
+
+  // align this residue
+  // Yaxis: C=O bond is align on Y
+  // Xaxis: C-CA projection (setframe(2, ...))
+  //         CA
+  //   Y       \
+  //   ^        C
+  //   |        |
+  //   O-->X    O
+  cpos  = sprintf( ":1:C" );
+  opos  = sprintf( ":1:O" );
+  capos = sprintf( ":1:CA");
+  err = setframe( 2, newmol, cpos, capos, cpos, opos, cpos );
+  if (err != 0)
+  {
+    // it could be ACE
+    capos = sprintf( ":1:CH3");
+    err = setframe( 2, newmol, cpos, capos, cpos, opos, cpos );
+  }
+  err = alignframe(newmol,NULL);
+
+  // move the new residue in order to "form" the right bond length
+  // (no bond is made yet)
+  for( atm in newmol )
+  {
+    atm.x = atm.x - 1.2039;
+    atm.y = atm.y - 0.5768;
+  }
+
+  // merge the two molecules
+  mergestr( mymol, mystrand, "last", 
+	    newmol, "new", "first" );
+  // connect the two residue
+  nres = countmolres(mymol, ":*:*");
+  connectres(mymol, mystrand, nres, "C", myresid, "NZ");
+
+  return mymol;
+};
+
+// convert 1 letter Lys residue to 3 letter residue
+string getlys_aa(string res1letter)
+{
+  string res3letter;
+  string map1to3[ hashed ];
+  // nomenclature: 
+  // A NH3 B NH3 C COO-
+  // D NH2 E NH2 F COOH
+  // G NH  H NH  I CO
+  map1to3["A"] = "CBG"; // CO2-NH3-NH  init w/o  branch
+  map1to3["B"] = "CHG"; // CO2-NH -NH  init with branch 
+  map1to3["C"] = "IBG"; // CO -NH3-NH  add  w/o  branch
+  map1to3["D"] = "IHG"; // CO -NH -NH  add  with branch
+  map1to3["e"] = "IHD"; // CO -NH -NH2 end  with branch, N neutral
+  map1to3["h"] = "IBD"; // CO -NH3-NH2 end  w/o  branch, N neutral
+
+  if ( res1letter in map1to3 ) {
+    res3letter = map1to3[res1letter];
+  } 
+  else 
+  {
+    fprintf(stderr, "undefined residue %s\n", res1letter);
+    exit(1);
+  }
+  return res3letter;
+};
+
+molecule minimize(molecule mol, string pdbname)
+{
+  molecule m;
+  string mycmd;
+  float m_xyz[dynamic];
+  float g_xyz[dynamic];
+  float drms;
+  float nrj;
+
+  // create topology + initial coordinates
+  mycmd = sprintf("leaprc.protein.ff14SB");
+  mycmd = sprintf("%s\n loadamberprep prep/CBA-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/CBD-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/CBG-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/CEA-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/CED-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/CEG-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/CHA-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/CHD-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/CHG-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/FBA-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/FBD-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/FBG-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/FEA-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/FED-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/FEG-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/FHA-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/FHD-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/FHG-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/IBA-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/IBD-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/IBG-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/IEA-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/IED-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/IEG-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/IHA-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/IHD-resp.prep", mycmd);
+  mycmd = sprintf("%s\n loadamberprep prep/IHG-resp.prep", mycmd);
+  m = getpdb_prm(pdbname, mycmd, "", 0);
+
+  // initialize minimization
+  allocate m_xyz[3*m.natoms];
+  allocate g_xyz[3*m.natoms];
+  mm_options("ntpr = 100, cut = 15.0, gb = 1,");
+  mme_init(m, NULL, "::ZZZ", NULL, NULL);
+  drms = 0.1;
+
+  // minimize
+  setxyz_from_mol(m, NULL, m_xyz);
+/*
+  nrj = mme(m_xyz, g_xyz, 1);
+  printf("initial energy = %f\n", nrj);
+*/
+
+  conjgrad(m_xyz, 3*m.natoms, nrj, mme, drms, 1.0, 100);
+/*
+  printf("final energy = %f\n", nrj);
+*/
+
+  setmol_from_xyz(mol, NULL, m_xyz);
+
+  return mol;
+};
+
+int savepdb(molecule m, string pdbname, string conect)
+{
+  file fpdb;
+  string mycmd;
+
+  // save pdb
+  putpdb(pdbname,m);
+  // append CONECT data
+  fpdb = fopen(pdbname, "a");
+  fprintf(fpdb,"%s", conect);
+  fclose(fpdb);
+  // correct PDB file
+  mycmd = sprintf("python correctPdb.py %s > .tmp && mv .tmp %s", pdbname, pdbname);
+  system(mycmd);
+  return 0;
+};
+
+molecule linklys(string seq, string pdbname, string conect)
+{
+  molecule m;
+  string res1letter;
+  string resname;
+  residue res;
+  int slen;
+  int i, resid;
+  int connect;
+  atom Cpept, Npept;
+  file fpdb;
+  string mycmd;
+
+  slen = length( seq );
+
+  // create molecule
+  m = newmolecule();
+  addstrand(m,"GJ");
+  conect = sprintf("");
+
+  // first residue
+  res1letter = substr(seq,1,1);
+  printf("residue 1 res1letter = %s\n", res1letter);
+
+  resname = getlys_aa(res1letter);
+  res=getresidue(resname, "./lysine94.rlb");
+  res=getresidue(resname, "./lysine94.rlb");
+  addresidue(m,"GJ",res);
+
+  i = 2;
+  resid = 2;
+  while (i <= slen)
+  {
+    res1letter = substr(seq,i,1);
+    // is it a number or a residue?
+    connect = 0;
+    while (index("1234567890", res1letter) != 0)
+    {
+      connect = connect*10+index("123456789", res1letter);
+      i = i+1;
+      res1letter = substr(seq,i,1);
+    }
+    
+    resname = getlys_aa(res1letter);
+    if (connect == 0)
+    {
+      printf("residue %d res1letter = %s connect = %d\n", resid, res1letter, resid-1);
+      m = myaddresidueN(m,"GJ",resid-1,resname,"./lysine94.rlb");
+    }
+    else
+    {
+      printf("residue %d res1letter = %s connect = %d\n", resid, res1letter, connect);
+      m = myaddresidueNZ(m,"GJ",connect,resname,"./lysine94.rlb");
+      // store CONECT data
+      for (Cpept in m)
+      {
+        if ( (Cpept.resnum == resid) && (Cpept.atomname == "C") ) break;
+      }
+      for (Npept in m)
+      {
+        if ( (Npept.resnum == connect) && (Npept.atomname == "NZ") ) break;
+      }
+      printf("CONECT%5d%5d\n", Cpept.atomnum, Npept.atomnum);
+      conect = sprintf("%sCONECT%5d%5d\n", conect, Cpept.atomnum, Npept.atomnum);
+    }
+
+    savepdb(m, "tmp.pdb", conect);
+    m = minimize(m, "tmp.pdb");
+    
+    i = i+1;
+    resid = resid + 1;
+  }
+
+  // save pdb
+  putpdb(pdbname,m);
+  // append CONECT data
+  fpdb = fopen(pdbname, "a");
+  fprintf(fpdb,"%s", conect);
+  fclose(fpdb);
+  // correct PDB file
+  mycmd = sprintf("python correctPdb.py %s > .tmp && mv .tmp %s", pdbname, pdbname);
+  system(mycmd);
+  return m;
+};
+
+molecule m;
+residue res;
+int resid;
+string mycmd;
+string conect;
+
+float m_xyz[dynamic];
+float g_xyz[dynamic];
+float drms;
+float nrj;
+
+if (argc != 3)
+{
+  fprintf(stderr,"ERROR: Wrong number of arguments\n\nUsage: %s SEQUENCE OUT.pdb\n", argv[1]);
+  exit(1);
+}
+
+// create molecule
+m = linklys(argv[2], argv[3], conect);
+
+// create topology + initial coordinates
+mycmd = sprintf("leaprc.ff14SB");
+mycmd = sprintf("%s\n loadamberprep prep/CBA-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/CBD-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/CBG-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/CEA-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/CED-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/CEG-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/CHA-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/CHD-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/CHG-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/FBA-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/FBD-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/FBG-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/FEA-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/FED-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/FEG-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/FHA-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/FHD-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/FHG-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/IBA-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/IBD-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/IBG-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/IEA-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/IED-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/IEG-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/IHA-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/IHD-resp.prep", mycmd);
+mycmd = sprintf("%s\n loadamberprep prep/IHG-resp.prep", mycmd);
+m = getpdb_prm(argv[3], mycmd, "", 0);
+
+// initialize minimization
+allocate m_xyz[3*m.natoms];
+allocate g_xyz[3*m.natoms];
+mm_options("ntpr = 100, cut = 999.0, gb = 1,");
+mme_init(m, NULL, "::ZZZ", NULL, NULL);
+drms = 0.1;
+
+setxyz_from_mol(m, NULL, m_xyz);
+nrj = mme(m_xyz, g_xyz, 1);
+printf("initial energy = %f\n", nrj);
+conjgrad(m_xyz, 3*m.natoms, nrj, mme, drms, 10.0, 1000);
+printf("final energy = %f\n", nrj);
+nrj = mme(m_xyz, g_xyz, 1);
+printf("final energy = %f\n", nrj);
+setmol_from_xyz(m, NULL, m_xyz);
+savepdb(m, "min.pdb", conect);

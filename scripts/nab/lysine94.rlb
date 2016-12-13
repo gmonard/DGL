@@ -1,0 +1,8 @@
+#
+#	amino acids (Amber 94 all-atom force field)
+#
+pdb	./lysine94/lysine94.pdb
+bnd	./lysine94/lysine94.bnd
+chi 	./lysine94/lysine94.chi
+qr	./lysine94/lysine94.qr
+#atomkind	aa
