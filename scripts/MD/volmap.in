@@ -1,0 +1,13 @@
+# cpptraj script to generate volmap files (.dx).
+
+# Load trajectory files
+parm prmtop-mass
+trajin nvt*.crd
+
+# RMS on atoms C, N, CA, O of the fifth residu
+rms :5@C,N,CA,O
+
+# Center all atoms
+center @* origin mass
+
+volmap volmap_wi_rmsd.dx 1 1 1 @* size 200,200,200 center 0,0,0

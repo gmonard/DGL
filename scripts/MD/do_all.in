@@ -1,0 +1,26 @@
+# Multiple analysis in one script
+
+# Load the trajectory files
+parm prmtop-mass
+trajin nvt*.crd
+
+# Snapshot at 1µs
+trajout snapshot_1us.pdb start 10000 stop 10000
+
+# Use radial to get data on atom and charge densities
+radial rdf.txt 0.5 100. :CBG,IBG,IBD@NZ :5@CA,N,C,O center2 intrdf rdf.txt rawrdf rdf.raw
+radial rdf_density.txt 0.5 100. @* :5@CA,N,C,O center2 intrdf rdf_density.txt rawrdf rdf_density.raw
+radial rdf_all.txt 0.5 100. :CBG,IBG,IBD@NZ @* center2 intrdf rdf_all.txt rawrdf rdf_all.raw
+radial rdf_density_all.txt 0.5 100. @* @* center2 intrdf rdf_density_all.txt rawrdf rdf_density_all.raw
+
+# Average structure into PDB
+reference nvt-05.crd lastframe [1us]
+rms ref [1us] mass
+average avg_structure.mol2 mol2
+average crdset [rms_average]
+go
+
+# Radius of gyration
+rms ref [rms_average] mass out rms_final.agr
+radgyr mass tensor out rayon_tensor.agr
+go

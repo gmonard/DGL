@@ -1,0 +1,11 @@
+Load trajectory files
+parm prmtop-mass
+
+# 1/10 or 1/100 frames
+# trajin nvt*.crd 1 last 100
+trajin nvt*.crd 1 last 10
+
+# 2Drms of residues 1-8
+rms first mass out rms.agr
+2drms :1-8@CA,N,C out 2drms-100-backbone.gnu
+go
