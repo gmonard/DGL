@@ -1,3 +1,11 @@
 parm prmtop-mass
 trajin nvt-*.crd
-radial out rdf-charge.dat 0.10 20.0 :CBG,IBD,IBG@NZ
+#trajin nvt-4*.crd
+#trajin nvt-50.crd
+#radial out rdf-charge.dat 0.10 20.0 :CBG,IBD,IBG@NZ
+#radial out rdf-back-ON.dat 0.10 20.0 :*@O :*@N,NZ
+#radial out rdf-back-OH.dat 0.10 20.0 :*@O :*@HZ1,HZ2,HZ3,H
+radial out rdf-back-ON.dat 0.10 20.0 :*@O :*@N
+radial out rdf-back-ONZ.dat 0.10 20.0 :*@O :*@NZ
+radial out rdf-back-OHZ.dat 0.10 20.0 :*@O :*@HZ1,HZ2,HZ3
+radial out rdf-back-OH.dat 0.10 20.0 :*@O :*@H
