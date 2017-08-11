@@ -1,0 +1,3 @@
+parm prmtop-mass
+trajin nvt-*.crd
+principal :* out inertia.dat
