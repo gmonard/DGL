@@ -1,7 +1,7 @@
 BEGIN {imin=100.0; imax=-100.0; jmin=100.0; jmax=-100.0; imean = 0.0; jmean = 0.0;}
 /EIGENVALUES/ { Ix=$3;
                 Iy=$4;
-                Iz=$6;
+                Iz=$5;
                 Tr = Ix+Iy+Iz;
                 I2=Ix*Iy+Iy*Iz+Iz*Ix;
                 L3=Tr/3.;
